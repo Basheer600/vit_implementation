@@ -122,6 +122,8 @@ class PatchEmbedding(Module):
     self.dim = dim
     self.patch_embed = Conv2d(self.in_chans, self.dim, kernel_size=self.patch_dim, stride=self.patch_dim)
     # self.patch_embed1 = Conv2d(self.in_chans, self.dim, kernel_size=self.patch_dim, stride=self.patch_dim)
+    self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 
   def forward(self, x):
     """Divide an image into patches and project them.
@@ -137,8 +139,18 @@ class PatchEmbedding(Module):
 
     batch_size, in_chans, img_dim, img_dim = x.shape
     # num_patches = get_sequence_size(img_dim, self.patch_dim)
-    y = self.patch_embed(x).flatten(2).transpose(1, 2)
-    return (y)
+    # Computing the wavelet transform coefficients
+    dataArray = torch.empty((batch_size, in_chans, img_dim, img_dim))
+    for j in range(batch_size):
+      for k in range(in_chans):
+        wavCoeffs = pywt.wavedec2(x[j][k].cpu(), 'db1', level=2)
+        Array, Slice = pywt.coeffs_to_array(wavCoeffs)
+        # Coeff1 = pywt.array_to_coeffs(Array, Slice, output_format='wavedecn')
+        # Recon = pywt.waverecn(wavCoeffs, 'db1',mode='periodization')
+        dataArray[j][k] = torch.tensor(Array)
+    dataArray = dataArray.to(self.device)  # The model is on the GPU, but the data is on the CPU. So, you need to send your input tensors to the GPU.
+    y = self.patch_embed(dataArray).flatten(2).transpose(1, 2)
+    return y
 
   @staticmethod
   def get_sequence_size(img_dim, patch_dim):

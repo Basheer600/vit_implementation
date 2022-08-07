@@ -30,8 +30,8 @@ from torchvision import datasets, transforms
 from torchvision import models as torchvision_models
 
 import utils
-import vision_transformer
-import vision_transformer as vits
+from models import ViT as vit
+# import vision_transformer as vits
 
 try:
     import wandb
@@ -158,7 +158,7 @@ def main_function_on_each_process(local_rank, args):
         wandb.finish()
 
 
-def train_one_epoch(...):
+def train_one_epoch(model, data_loader, ):
 
     metric_logger = utils.MetricLogger(delimiter="  ")
     header = 'Epoch: [{}/{}]'.format(epoch, args.epochs)

@@ -1,14 +1,13 @@
-import torch # The torch package includes data structure for multi-dimensional tensors and mathematical operation over these are defined.
-import torch.nn.functional as F # This package has functional classes which are similar to torch.nn.
-import torchvision # The torchvision package consists of popular datasets, model architectures, and common image transformations for computer vision.
-from torchvision import transforms # transforms: Transforms are common image transformations available in the "torchvision.transforms" module.
+import torch  # The torch package includes data structure for multi-dimensional tensors and mathematical operation over these are defined.
+import torch.nn.functional as F  # This package has functional classes which are similar to torch.nn.
+import torchvision  # The torchvision package consists of popular datasets, model architectures, and common image transformations for computer vision.
+from torchvision import transforms  # transforms: Transforms are common image transformations available in the "torchvision.transforms" module.
 from models import ViT
-import time #As the name suggests Python time module allows to work with time in Python. It allows functionality like getting the current time, pausing the Program from executing, etc.
+import time  #As the name suggests Python time module allows to work with time in Python. It allows functionality like getting the current time, pausing the Program from executing, etc.
 import matplotlib.pyplot as plt
 import scipy.fftpack
 from scipy.fftpack import fft, dct
 import pywt
-
 
 '''The torch.nn namespace provides all the building blocks you need, to build and train your own neural network.
 https://pytorch.org/docs/stable/nn.html#containers
@@ -25,14 +24,6 @@ def train_epoch(model, optimizer, data_loader, loss_history, device):
 
   for i, (data, target) in enumerate(data_loader):
     data = data.to(device)
-    # dataArray = torch.empty((100,1,28,28))
-    # # data1 = torch.empty((100,1,4,4))
-    # # # Computing DCT-2
-    # for j in range(data.size(0)):
-    #   wavCoeffs = pywt.wavedec2(data[j][0], 'db1', level=2)
-    #   Array, Slice = pywt.coeffs_to_array(wavCoeffs)
-    #   dataArray[j][0] = torch.tensor(Array)
-    # #  plt.imshow(data[i][0])
     target = target.to(device)
     optimizer.zero_grad()  # Sets the gradients of all optimized torch.Tensor s to zero.
     output = F.log_softmax(model(data), dim=1) # Applies a softmax followed by a logarithm
@@ -57,13 +48,6 @@ def evaluate(model, data_loader, loss_history, device):
   with torch.no_grad():
     for data, target in data_loader:
       data = data.to(device)
-      # dataArray = torch.empty((1000, 1, 28, 28))
-      # # data1 = torch.empty((100,1,4,4))
-      # # # Computing DCT-2
-      # for j in range(data.size(0)):
-      #   wavCoeffs = pywt.wavedec2(data[j][0], 'db1', level=2)
-      #   Array, Slice = pywt.coeffs_to_array(wavCoeffs)
-      #   dataArray[j][0] = torch.tensor(Array)
       target = target.to(device)
       output = F.log_softmax(model(data), dim=1)
       loss = F.nll_loss(output, target, reduction='sum')
@@ -85,13 +69,14 @@ def dct2(a):
 def train_vit():
   # A torch.device is an object representing the device on which a torch.Tensor is or will be allocated.
   device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+  # device = 'cpu'
   start_time = time.time()
 
   BATCH_SIZE_TRAIN = 100
   BATCH_SIZE_TEST = 1000
   N_EPOCHS = 6
 
-  DOWNLOAD_PATH = './data/mnist'
+  DOWNLOAD_PATH = './data/CIFAR100'
 
   # Load data
   ''' transforms: Transforms are common image transformations available in the "torchvision.transforms" module. They can
@@ -104,7 +89,7 @@ def train_vit():
    transforms.ToTensor: Converts a PIL Image or numpy.ndarray (H x W x C) in the range [0, 255] to a torch.FloatTensor of shape (C x H x W)
    in the range [0.0, 1.0] if the PIL Image belongs to one of the modes (L, LA, P, I, F, RGB, YCbCr, RGBA, CMYK, 1) or
    if the numpy.ndarray has dtype = np.uint8. In the other cases, tensors are returned without scaling.'''
-  transform_mnist = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
+  transform_CIFAR100 = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5071, 0.4867, 0.4408), (0.2675, 0.2565, 0.2761))])
 
   '''Q1:Why the normalization is for only a particular channel? How the mean and variance values are considered?
      Q2: Where can I find the downloaded MNIST dataset?
@@ -130,7 +115,7 @@ def train_vit():
   shuffle (bool, optional) – set to True to have the data reshuffled at every epoch (default: False).
   num_workers (int, optional) – how many subprocesses to use for data loading. 0 means that the data will be loaded in the main process. (default: 0)
   '''
-  train_set = torchvision.datasets.MNIST(DOWNLOAD_PATH, train=True, download=True, transform=transform_mnist)
+  train_set = torchvision.datasets.CIFAR100(DOWNLOAD_PATH, train=True, download=True, transform=transform_CIFAR100)
   # # Computing DCT-2
   # for i in range(train_set.data.size(0)):
   #   train_set.data[i] = torch.tensor(dct2(train_set.data[i]))
@@ -138,13 +123,13 @@ def train_vit():
 
   train_loader = torch.utils.data.DataLoader(train_set, batch_size=BATCH_SIZE_TRAIN, shuffle=True, num_workers=2)
 
-  test_set = torchvision.datasets.MNIST(DOWNLOAD_PATH, train=False, download=True, transform=transform_mnist)
+  test_set = torchvision.datasets.CIFAR100(DOWNLOAD_PATH, train=False, download=True, transform=transform_CIFAR100)
   test_loader = torch.utils.data.DataLoader(test_set, batch_size=BATCH_SIZE_TEST, shuffle=False, num_workers=2)
 
   # Initialize model
-  model = ViT(28, 7, 1, 10, 64, 6, 8, .02).to(device)
+  model = ViT(32, 8, 3, 100, 128, 6, 8, .02).to(device)
 
-  optimizer = torch.optim.Adam(model.parameters(), lr=0.003)
+  optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
   # Train model
   train_loss_history, test_loss_history = [], []
@@ -160,4 +145,3 @@ def train_vit():
 
 if __name__ == "__main__":
   train_vit()
-
